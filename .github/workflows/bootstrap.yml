@@ -336,7 +336,7 @@ def require_jwt():
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         return None, (jsonify({"error": "missing token"}), 401)
-      EOF
+EOF
 
       - name: Commit files
         run: |
