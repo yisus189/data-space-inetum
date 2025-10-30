@@ -12,7 +12,7 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Create minimal files
+      - name: Create project files
         run: |
           set -e
           mkdir -p connectors/ids_connector_mock scripts config policies examples tests .github/workflows
@@ -20,9 +20,44 @@ jobs:
           cat > README.md <<'EOF'
 Data Space Inetum — IDSA + DSSC compliant (plantilla)
 
+Este repositorio contiene una plantilla completa para desplegar un Data Space de prueba/POC orientado a empresa,
+compatible con los principios IDSA y con recomendaciones del DSSC. Incluye:
+
+- OpenMetadata (catálogo) + script que extrae el catálogo y lo transforma a DCAT/JSON-LD compatible.
+- Keycloak como DAPS emulado (emite JWTs).
+- Conector IDS mock (Flask) que valida JWTs.
+- Scripts para generar/validar JWTs de prueba.
+- Políticas/contratos de ejemplo (ODRL/DPL JSON-LD).
+- Docker Compose para "one-click" local.
+- Tests unitarios y CI básica (GitHub Actions).
+
+Licencia: Apache-2.0
+
 Quick start (local)
-1. cp scripts/config.example.env .env
-2. docker-compose up -d
+1. Copia config: cp scripts/config.example.env .env
+2. Rellena variables en .env si es necesario (ej. CLIENT_SECRET).
+3. Levanta la pila:
+   docker-compose up -d
+4. Espera a que Keycloak/OpenMetadata estén arriba (logs).
+5. Ejecuta:
+   bash scripts/setup_keycloak_realm.sh
+6. Inserta dataset de ejemplo en OpenMetadata (script incluido).
+7. Extrae catálogo:
+   python3 scripts/openmetadata_ingest.py --url http://localhost:8585 --api_key "" --out examples/catalog_ids.json
+8. Genera un JWT de prueba:
+   python3 scripts/jwt_tools.py gen --kid testkey --subject test-user --out jwt.txt
+9. Llama al conector:
+   curl -H "Authorization: Bearer $(cat jwt.txt)" http://localhost:8000/api/offers
+EOF
+
+          cat > LICENSE <<'EOF'
+Apache License
+Version 2.0, January 2004
+http://www.apache.org/licenses/
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+(Use the official Apache-2.0 license text in production)
 EOF
 
           cat > .gitignore <<'EOF'
@@ -35,6 +70,418 @@ examples/catalog_ids.json
 .secrets/
 EOF
 
+          cat > docker-compose.yml <<'EOF'
+version: "3.8"
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: openmetadata
+      POSTGRES_PASSWORD: openmetadata
+      POSTGRES_DB: openmetadata
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  openmetadata:
+    image: openmetadata/openmetadata:latest
+    environment:
+      - OMDB_HOST=postgres
+      - OMDB_PORT=5432
+      - JDBC_URL=jdbc:postgresql://postgres:5432/openmetadata
+    ports:
+      - "8585:8585"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:20.0.3
+    command: ["start-dev"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8080"
+    restart: unless-stopped
+
+  ids-connector-mock:
+    build: ./connectors/ids_connector_mock
+    environment:
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=dataplane
+    ports:
+      - "8000:8000"
+    depends_on:
+      - keycloak
+
+volumes:
+  pgdata:
+EOF
+
+          cat > scripts/config.example.env <<'EOF'
+OPENMETADATA_URL=http://localhost:8585
+OPENMETADATA_API_KEY=
+KEYCLOAK_URL=http://localhost:8180
+KEYCLOAK_REALM=dataplane
+KEYCLOAK_ADMIN_USER=admin
+KEYCLOAK_ADMIN_PASSWORD=admin
+CLIENT_ID=ids-connector-client
+CLIENT_SECRET=replace-me-for-prod
+EOF
+
+          cat > scripts/openmetadata_ingest.py <<'EOF'
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import requests
+
+DEFAULT_TIMEOUT = 10
+
+def fetch_tables(base_url, api_key, limit=100):
+    headers = {}
+    if api_key:
+        headers['Authorization'] = f'Bearer {api_key}'
+    url = f"{base_url.rstrip('/')}/api/v1/tables?limit={limit}"
+    items = []
+    resp = requests.get(url, headers=headers, timeout=DEFAULT_TIMEOUT)
+    resp.raise_for_status()
+    data = resp.json()
+    if isinstance(data, dict):
+        if 'data' in data and isinstance(data['data'], dict):
+            if 'tables' in data['data']:
+                items = data['data']['tables']
+        elif 'entities' in data:
+            items = data['entities']
+        else:
+            for v in data.values():
+                if isinstance(v, list):
+                    items = v
+                    break
+    elif isinstance(data, list):
+        items = data
+    return items
+
+def map_to_dcat(entity):
+    name = entity.get("fullyQualifiedName") or entity.get("name") or entity.get("id")
+    title = entity.get("displayName") or name
+    description = entity.get("description") or ""
+    owner = entity.get("owner") or {}
+    tags = [t.get('tagFQN') if isinstance(t, dict) else t for t in (entity.get('tags') or [])]
+    href = entity.get('href') or entity.get('href')
+    return {
+        "@type": "dcat:Dataset",
+        "id": name,
+        "title": title,
+        "description": description,
+        "publisher": {"name": owner.get('name') if owner else None},
+        "distributions": [
+            {"accessURL": href, "format": entity.get("tableType") or "unknown"}
+        ],
+        "keywords": tags
+    }
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--url", required=True, help="OpenMetadata base URL")
+    parser.add_argument("--api_key", default="", help="API key (si aplica)")
+    parser.add_argument("--out", default="examples/catalog_ids.json", help="Archivo de salida")
+    args = parser.parse_args()
+
+    items = fetch_tables(args.url, args.api_key)
+    dcat_items = [map_to_dcat(e) for e in items]
+    catalog = {
+        "@context": {"dcat": "http://www.w3.org/ns/dcat#"},
+        "datasets": dcat_items
+    }
+    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+    with open(args.out, "w", encoding="utf-8") as f:
+        json.dump(catalog, f, indent=2, ensure_ascii=False)
+    print(f"Catalogo generado en {args.out}, elementos: {len(dcat_items)}")
+
+if __name__ == "__main__":
+    main()
+EOF
+          chmod +x scripts/openmetadata_ingest.py
+
+          cat > scripts/jwt_tools.py <<'EOF'
+#!/usr/bin/env python3
+import argparse
+import time
+import jwt
+
+DEFAULT_PRIVATE_KEY = "scripts/test_private.pem"
+
+def load_private_key(path=DEFAULT_PRIVATE_KEY):
+    with open(path, "rb") as f:
+        return f.read()
+
+def gen_jwt(kid="testkey", subject="test-user", aud="ids-connector", exp_minutes=60, private_key_path=None):
+    key = load_private_key(private_key_path or DEFAULT_PRIVATE_KEY)
+    now = int(time.time())
+    payload = {
+        "iss": "http://localhost:8180/realms/dataplane",
+        "sub": subject,
+        "aud": aud,
+        "iat": now,
+        "exp": now + exp_minutes * 60,
+        "scope": "ids:access"
+    }
+    headers = {"kid": kid}
+    token = jwt.encode(payload, key, algorithm="RS256", headers=headers)
+    return token
+
+def main():
+    parser = argparse.ArgumentParser()
+    sub = parser.add_subparsers(dest="cmd")
+    gen = sub.add_parser("gen")
+    gen.add_argument("--kid", default="testkey")
+    gen.add_argument("--subject", default="test-user")
+    gen.add_argument("--aud", default="ids-connector")
+    gen.add_argument("--exp", type=int, default=60)
+    gen.add_argument("--private", default=None)
+    gen.add_argument("--out", default="jwt.txt")
+    args = parser.parse_args()
+    if args.cmd == "gen":
+        token = gen_jwt(kid=args.kid, subject=args.subject, aud=args.aud, exp_minutes=args.exp, private_key_path=args.private)
+        with open(args.out, "w") as f:
+            f.write(token)
+        print("JWT generado en", args.out)
+
+if __name__ == "__main__":
+    main()
+EOF
+          chmod +x scripts/jwt_tools.py
+
+          cat > connectors/ids_connector_mock/Dockerfile <<'EOF'
+FROM python:3.10-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "app.py"]
+EOF
+
+          cat > connectors/ids_connector_mock/requirements.txt <<'EOF'
+flask
+pyjwt[crypto]
+requests
+cryptography
+jwcrypto
+python-jose
+cachetools
+EOF
+
+          cat > connectors/ids_connector_mock/app.py <<'EOF'
+#!/usr/bin/env python3
+from flask import Flask, request, jsonify
+import os
+import requests
+from jose import jwt, JWTError
+from cachetools import TTLCache
+
+KEYCLOAK_URL = os.environ.get("KEYCLOAK_URL", "http://keycloak:8080")
+REALM = os.environ.get("KEYCLOAK_REALM", "dataplane")
+JWKS_URL = f"{KEYCLOAK_URL}/realms/{REALM}/protocol/openid-connect/certs"
+
+app = Flask(__name__)
+jwks_cache = TTLCache(maxsize=1, ttl=300)
+
+def get_jwks():
+    if 'jwks' in jwks_cache:
+        return jwks_cache['jwks']
+    r = requests.get(JWKS_URL, timeout=5)
+    r.raise_for_status()
+    jwks = r.json()
+    jwks_cache['jwks'] = jwks
+    return jwks
+
+def validate_jwt(token):
+    jwks = get_jwks()
+    try:
+        headers = jwt.get_unverified_header(token)
+        kid = headers.get('kid')
+        keys = jwks.get('keys', [])
+        key = None
+        for k in keys:
+            if k.get('kid') == kid:
+                key = k
+                break
+        if not key:
+            raise Exception("kid not found in jwks")
+        claims = jwt.decode(token, key, algorithms=['RS256'], audience="ids-connector")
+        return claims
+    except JWTError as e:
+        raise
+
+def require_jwt():
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None, (jsonify({"error": "missing token"}), 401)
+    token = auth.split(" ", 1)[1]
+    try:
+        claims = validate_jwt(token)
+        return claims, None
+    except Exception as e:
+        return None, (jsonify({"error": "invalid token", "detail": str(e)}), 401)
+
+@app.route("/api/offers", methods=["GET"])
+def offers():
+    claims, err = require_jwt()
+    if err:
+      return err
+    return jsonify({
+      "offers": [
+        {"id": "offer-1", "dataset": "sample-dataset", "price": 0, "policy": "policies/data-usage-policy.jsonld"}
+      ],
+      "subject": claims.get("sub")
+    })
+
+@app.route("/api/contract", methods=["POST"])
+def contract():
+    claims, err = require_jwt()
+    if err:
+      return err
+    payload = request.json or {}
+    print("Contrato recibido:", payload)
+    return jsonify({"status": "accepted", "contractId": "ct-123", "subject": claims.get("sub")})
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
+EOF
+
+          cat > config/keycloak-realm.json <<'EOF'
+{
+  "realm": "dataplane",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "ids-connector-client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "directAccessGrantsEnabled": true,
+      "secret": "replace-me-for-prod",
+      "redirectUris": []
+    }
+  ],
+  "users": [
+    {
+      "username": "test-user",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
+EOF
+
+          cat > policies/data-usage-policy.jsonld <<'EOF'
+{
+  "@context": "http://www.w3.org/ns/odrl.jsonld",
+  "@type": "Policy",
+  "uid": "urn:policy:sample-1",
+  "profile": "http://www.w3.org/ns/odrl/2/",
+  "permission": [
+    {
+      "target": "urn:data:sample-dataset",
+      "action": "use",
+      "constraint": [
+        {
+          "leftOperand": "purpose",
+          "operator": "eq",
+          "rightOperand": "research"
+        }
+      ]
+    }
+  ]
+}
+EOF
+
+          cat > examples/catalog_ids.json <<'EOF'
+{
+  "@context": { "dcat": "http://www.w3.org/ns/dcat#" },
+  "datasets": [
+    {
+      "@type": "dcat:Dataset",
+      "id": "sample-db.sample_table",
+      "title": "Sample Table",
+      "description": "Ejemplo de tabla en OpenMetadata",
+      "publisher": { "name": "data-owner" },
+      "distributions": [
+        { "accessURL": "http://connector.example/data/sample-db.sample_table", "format": "csv" }
+      ],
+      "keywords": ["sample", "test"]
+    }
+  ]
+}
+EOF
+
+          cat > requirements.txt <<'EOF'
+requests
+pytest
+flake8
+PyJWT
+python-jose
+flask
+EOF
+
+          cat > .github/workflows/ci.yml <<'EOF'
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Run tests
+        run: pytest -q
+EOF
+
+          cat > tests/test_ingest.py <<'EOF'
+import json
+from scripts.openmetadata_ingest import map_to_dcat
+
+def test_map_to_dcat_minimal():
+    entity = {
+        "fullyQualifiedName": "db.table",
+        "displayName": "Table",
+        "description": "desc",
+        "owner": {"name": "owner1"},
+        "tags": [{"tagFQN": "tag1"}],
+        "href": "http://example.com/table"
+    }
+    d = map_to_dcat(entity)
+    assert d["id"] == "db.table"
+    assert d["title"] == "Table"
+    assert d["publisher"]["name"] == "owner1"
+    assert d["distributions"][0]["accessURL"] == "http://example.com/table"
+EOF
+
+          cat > scripts/README_KEYS.txt <<'EOF'
+Genera claves RSA para pruebas (no subir las privadas al repo):
+openssl genpkey -algorithm RSA -out scripts/test_private.pem -pkeyopt rsa_keygen_bits:2048
+openssl rsa -in scripts/test_private.pem -pubout -out scripts/test_public.pem
+EOF
+
+          cat > connectors/ids_connector_mock/README.md <<'EOF'
+Simple IDS connector mock que valida JWT usando Keycloak JWKS y devuelve ofertas/acepta contratos.
+EOF
+
       - name: Commit files
         run: |
           git config user.name "github-actions[bot]"
@@ -42,6 +489,14 @@ EOF
           git add --all
           if git diff --cached --quiet; then
             echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Bootstrap Data Space Inetum — add project skeleton"
+          git push origin HEAD:main
+
+      - name: Report
+        run: |
+          echo "Bootstrap workflow finished. Revisa el repo: https://github.com/${{ github.repository }}"
             exit 0
           fi
           git commit -m "Bootstrap minimal — test YAML"
