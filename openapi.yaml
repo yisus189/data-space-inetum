@@ -1,0 +1,89 @@
+openapi: 3.0.3
+info:
+  title: Data Space API (IDS/DSSC)
+  version: 0.1.0
+servers:
+  - url: http://localhost:8000
+paths:
+  /publications:
+    get:
+      summary: Listar publicaciones
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Crear publicación (dataset)
+      responses:
+        '201':
+          description: Creado
+  /requests:
+    get:
+      summary: Listar solicitudes
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Crear solicitud (puede referenciar una publicación o una demanda)
+      responses:
+        '201':
+          description: Creado
+  /contracts:
+    get:
+      summary: Listar contratos
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Crear contrato a partir de una solicitud
+      responses:
+        '201':
+          description: Creado
+  /transfers:
+    get:
+      summary: Listar transferencias
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Crear transferencia de datos a partir de un contrato
+      responses:
+        '201':
+          description: Creado
+components:
+  schemas:
+    Publication:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        metadata:
+          type: object
+    Request:
+      type: object
+      properties:
+        id:
+          type: string
+        subject:
+          type: string
+        publication_id:
+          type: string
+    Contract:
+      type: object
+      properties:
+        id:
+          type: string
+        request_id:
+          type: string
+        state:
+          type: string
+    Transfer:
+      type: object
+      properties:
+        id:
+          type: string
+        contract_id:
+          type: string
