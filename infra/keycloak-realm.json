@@ -1,0 +1,96 @@
+{
+  "realm": "dataspace",
+  "enabled": true,
+  "displayName": "Data Space",
+  "accessTokenLifespan": 3600,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "provider",
+        "description": "Data Provider role"
+      },
+      {
+        "name": "consumer",
+        "description": "Data Consumer role"
+      },
+      {
+        "name": "broker",
+        "description": "Data Broker role"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dataspace-api",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "secret": "dataspace-secret",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "bearerOnly": false
+    }
+  ],
+  "users": [
+    {
+      "username": "provider-user",
+      "enabled": true,
+      "email": "provider@dataspace.local",
+      "emailVerified": true,
+      "firstName": "Provider",
+      "lastName": "User",
+      "realmRoles": ["provider"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "provider123",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "consumer-user",
+      "enabled": true,
+      "email": "consumer@dataspace.local",
+      "emailVerified": true,
+      "firstName": "Consumer",
+      "lastName": "User",
+      "realmRoles": ["consumer"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "consumer123",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "broker-user",
+      "enabled": true,
+      "email": "broker@dataspace.local",
+      "emailVerified": true,
+      "firstName": "Broker",
+      "lastName": "User",
+      "realmRoles": ["broker"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "broker123",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
