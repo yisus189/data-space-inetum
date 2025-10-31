@@ -40,6 +40,7 @@ class UserRole(str, enum.Enum):
 class Participant(Base):
     """Participant/User in the Data Space"""
     __tablename__ = "participants"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True)
     username = Column(String, unique=True, nullable=False, index=True)
@@ -57,11 +58,12 @@ class Participant(Base):
 class Publication(Base):
     """Publication (dataset/catalog item)"""
     __tablename__ = "publications"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    metadata_ = Column("metadata", JSON, nullable=True)
     owner_id = Column(String, ForeignKey("participants.id"), nullable=True)
     active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -75,13 +77,14 @@ class Publication(Base):
 class Request(Base):
     """Request for data access"""
     __tablename__ = "requests"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True)
     subject = Column(String, nullable=False)
     publication_id = Column(String, ForeignKey("publications.id"), nullable=True)
     requester_id = Column(String, ForeignKey("participants.id"), nullable=True)
     state = Column(SQLEnum(RequestState), default=RequestState.OPEN, nullable=False)
-    metadata = Column(JSON, nullable=True)
+    metadata_ = Column("metadata", JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -94,6 +97,7 @@ class Request(Base):
 class Contract(Base):
     """Contract/Agreement"""
     __tablename__ = "contracts"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True)
     request_id = Column(String, ForeignKey("requests.id"), nullable=False)
@@ -112,13 +116,14 @@ class Contract(Base):
 class Transfer(Base):
     """Data transfer record"""
     __tablename__ = "transfers"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True)
     contract_id = Column(String, ForeignKey("contracts.id"), nullable=False)
     destination = Column(String, nullable=True)
     presigned_url = Column(Text, nullable=True)
     state = Column(SQLEnum(TransferState), default=TransferState.INITIATED, nullable=False)
-    metadata = Column(JSON, nullable=True)
+    metadata_ = Column("metadata", JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -129,6 +134,7 @@ class Transfer(Base):
 class AuditLog(Base):
     """Append-only audit log for all important events"""
     __tablename__ = "audit_logs"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(String, primary_key=True)
     event_type = Column(String, nullable=False, index=True)

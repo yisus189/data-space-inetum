@@ -390,12 +390,11 @@ Environment Variables:
         parser.print_help()
         sys.exit(1)
     
-    # Override globals if arguments provided
-    global API_URL, TOKEN
+    # Override API URL and token if provided
     if args.api_url:
-        API_URL = args.api_url
+        globals()['API_URL'] = args.api_url
     if args.token:
-        TOKEN = args.token
+        globals()['TOKEN'] = args.token
     
     # Execute command
     commands = {

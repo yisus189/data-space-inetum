@@ -39,14 +39,14 @@ app = FastAPI(
 class PublicationIn(BaseModel):
     title: str
     description: Optional[str] = None
-    metadata: Optional[dict] = None
+    metadata_: Optional[dict] = None
 
 
 class PublicationOut(BaseModel):
     id: str
     title: str
     description: Optional[str]
-    metadata: Optional[dict]
+    metadata_: Optional[dict]
     owner_id: Optional[str]
     active: bool
     created_at: datetime
@@ -66,7 +66,7 @@ class RequestOut(BaseModel):
     publication_id: Optional[str]
     requester_id: Optional[str]
     state: str
-    metadata: Optional[dict]
+    metadata_: Optional[dict]
     created_at: datetime
     
     class Config:
@@ -144,7 +144,7 @@ def create_publication(
         id=str(uuid.uuid4()),
         title=pub.title,
         description=pub.description,
-        metadata=pub.metadata,
+        metadata_=pub.metadata_,
         owner_id=participant.id
     )
     
@@ -371,7 +371,7 @@ def create_transfer(
         s3_client = get_s3_client()
         presigned_url = s3_client.create_transfer_object(
             transfer.id,
-            metadata={
+            metadata_={
                 "contract_id": contract.id,
                 "transfer_id": transfer.id,
                 "user": current_user.username
@@ -458,7 +458,7 @@ def sync_catalog(
         # Check if publication already exists by title
         existing = db.query(Publication).filter(
             Publication.title == item['title'],
-            Publication.metadata['source'].astext == 'openmetadata'
+            Publication.metadata_['source'].astext == 'openmetadata'
         ).first()
         
         if existing:
@@ -469,7 +469,7 @@ def sync_catalog(
             id=str(uuid.uuid4()),
             title=item['title'],
             description=item['description'],
-            metadata=item['metadata'],
+            metadata_=item['metadata'],
             owner_id=participant.id
         )
         
@@ -509,7 +509,7 @@ def get_catalog(
     
     publications = db.query(Publication).filter(
         Publication.active == True,
-        Publication.metadata['source'].astext == 'openmetadata'
+        Publication.metadata_['source'].astext == 'openmetadata'
     ).all()
     
     logger.info(f"Found {len(publications)} catalog items")
@@ -521,7 +521,7 @@ def get_catalog(
                 "id": p.id,
                 "title": p.title,
                 "description": p.description,
-                "metadata": p.metadata,
+                "metadata": p.metadata_,
                 "created_at": p.created_at.isoformat()
             }
             for p in publications
@@ -540,7 +540,7 @@ def get_catalog_item(
     
     publication = db.query(Publication).filter(
         Publication.id == catalog_id,
-        Publication.metadata['source'].astext == 'openmetadata'
+        Publication.metadata_['source'].astext == 'openmetadata'
     ).first()
     
     if not publication:
@@ -551,7 +551,7 @@ def get_catalog_item(
         "id": publication.id,
         "title": publication.title,
         "description": publication.description,
-        "metadata": publication.metadata,
+        "metadata": publication.metadata_,
         "created_at": publication.created_at.isoformat()
     }
 
@@ -567,7 +567,7 @@ def download_catalog_item(
     
     publication = db.query(Publication).filter(
         Publication.id == catalog_id,
-        Publication.metadata['source'].astext == 'openmetadata'
+        Publication.metadata_['source'].astext == 'openmetadata'
     ).first()
     
     if not publication:
@@ -578,7 +578,7 @@ def download_catalog_item(
         "id": publication.id,
         "title": publication.title,
         "description": publication.description,
-        "metadata": publication.metadata,
+        "metadata": publication.metadata_,
         "created_at": publication.created_at.isoformat(),
         "updated_at": publication.updated_at.isoformat()
     }
