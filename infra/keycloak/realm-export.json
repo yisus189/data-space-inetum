@@ -1,0 +1,93 @@
+{
+  "realm": "dataspace",
+  "enabled": true,
+  "displayName": "Data Space Realm",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "clients": [
+    {
+      "clientId": "dataspace-api",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "secret": "dataspace-secret",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "attributes": {
+        "access.token.lifespan": "3600"
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "provider",
+        "description": "Data Provider role"
+      },
+      {
+        "name": "consumer",
+        "description": "Data Consumer role"
+      },
+      {
+        "name": "broker",
+        "description": "Data Broker role"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "provider-user",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "provider@dataspace.local",
+      "firstName": "Provider",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "provider123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["provider"]
+    },
+    {
+      "username": "consumer-user",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "consumer@dataspace.local",
+      "firstName": "Consumer",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "consumer123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["consumer"]
+    },
+    {
+      "username": "broker-user",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "broker@dataspace.local",
+      "firstName": "Broker",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "broker123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["broker"]
+    }
+  ]
+}
