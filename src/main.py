@@ -1,97 +1,135 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Optional, List
-import uuid
-from .catalog import sync_openmetadata_catalog
+import logging
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import time
 
-app = FastAPI(title="Data Space API (IDS/DSSC)")
+from src.routes import publications, requests, contracts, transfers, catalog, audit
+from src.config import settings
 
-# In-memory stores (ejemplo). En producción usar DB.
-PUBLICATIONS = {}
-REQUESTS = {}
-CONTRACTS = {}
-TRANSFERS = {}
-AUDIT_LOG = []
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, settings.log_level),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
-class PublicationIn(BaseModel):
-    title: str
-    description: Optional[str]
-    metadata: Optional[dict]
+logger = logging.getLogger(__name__)
 
-class RequestIn(BaseModel):
-    subject: str
-    publication_id: Optional[str]
+# Create FastAPI app
+app = FastAPI(
+    title="Data Space API (IDS/DSSC Compliant)",
+    description="""
+    Production-grade Data Space API following IDSA and DSSC principles.
+    
+    ## Features
+    - **Publications**: Manage data offerings and catalog entries
+    - **Requests**: Request access to published datasets
+    - **Contracts**: Manage data sharing agreements with implicit signing
+    - **Transfers**: Initiate and track data transfers with S3 presigned URLs
+    - **Catalog**: Sync and browse OpenMetadata catalog
+    - **Audit**: Complete audit trail of all system events
+    
+    ## Authentication
+    All endpoints require OAuth2/OIDC authentication via Keycloak.
+    Use the Bearer token in the Authorization header.
+    
+    ## Roles
+    - **Provider**: Can publish datasets and approve access requests
+    - **Consumer**: Can request access to datasets and initiate transfers
+    - **Broker**: Has full administrative access to all resources
+    """,
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
+)
 
-class ContractIn(BaseModel):
-    request_id: str
-    terms: Optional[dict]
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify allowed origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class TransferIn(BaseModel):
-    contract_id: str
-    destination: str
 
-def audit(event_type: str, payload: dict):
-    entry = {"id": str(uuid.uuid4()), "event": event_type, "payload": payload}
-    AUDIT_LOG.append(entry)
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all HTTP requests"""
+    start_time = time.time()
+    
+    # Process request
+    response = await call_next(request)
+    
+    # Calculate duration
+    duration = time.time() - start_time
+    
+    # Log request
+    logger.info(
+        f"{request.method} {request.url.path} - "
+        f"Status: {response.status_code} - "
+        f"Duration: {duration:.3f}s"
+    )
+    
+    return response
 
-@app.post("/publications", status_code=201)
-def create_publication(p: PublicationIn):
-    pid = str(uuid.uuid4())
-    PUBLICATIONS[pid] = {"id": pid, "title": p.title, "description": p.description, "metadata": p.metadata}
-    audit("publication_created", PUBLICATIONS[pid])
-    return PUBLICATIONS[pid]
 
-@app.get("/publications")
-def list_publications():
-    return list(PUBLICATIONS.values())
+# Include routers
+app.include_router(publications.router)
+app.include_router(requests.router)
+app.include_router(contracts.router)
+app.include_router(transfers.router)
+app.include_router(catalog.router)
+app.include_router(audit.router)
 
-@app.post("/requests", status_code=201)
-def create_request(r: RequestIn):
-    rid = str(uuid.uuid4())
-    REQUESTS[rid] = {"id": rid, "subject": r.subject, "publication_id": r.publication_id, "state":"open"}
-    audit("request_created", REQUESTS[rid])
-    return REQUESTS[rid]
 
-@app.get("/requests")
-def list_requests():
-    return list(REQUESTS.values())
+# Health check endpoint
+@app.get("/health", tags=["System"])
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "Data Space API",
+        "version": "1.0.0"
+    }
 
-@app.post("/contracts", status_code=201)
-def create_contract(c: ContractIn):
-    if c.request_id not in REQUESTS:
-        raise HTTPException(status_code=404, detail="Request not found")
-    cid = str(uuid.uuid4())
-    CONTRACTS[cid] = {"id": cid, "request_id": c.request_id, "terms": c.terms or {}, "state":"active"}
-    # marcar request como con contrato
-    REQUESTS[c.request_id]["state"] = "contracted"
-    audit("contract_created", CONTRACTS[cid])
-    # Firma implícita: registro de aceptación con timestamp y hash (simplificado)
-    audit("contract_signed_implicit", {"contract_id": cid, "method":"implicit_acceptance"})
-    return CONTRACTS[cid]
 
-@app.get("/contracts")
-def list_contracts():
-    return list(CONTRACTS.values())
+# Root endpoint
+@app.get("/", tags=["System"])
+async def root():
+    """Root endpoint with API information"""
+    return {
+        "name": "Data Space API",
+        "version": "1.0.0",
+        "description": "Production-grade Data Space API following IDSA and DSSC principles",
+        "docs": "/docs",
+        "openapi": "/openapi.json",
+        "health": "/health"
+    }
 
-@app.post("/transfers", status_code=201)
-def create_transfer(t: TransferIn):
-    if t.contract_id not in CONTRACTS:
-        raise HTTPException(status_code=404, detail="Contract not found")
-    tid = str(uuid.uuid4())
-    TRANSFERS[tid] = {"id": tid, "contract_id": t.contract_id, "destination": t.destination, "state":"initiated"}
-    audit("transfer_initiated", TRANSFERS[tid])
-    # Aquí se lanzaría el mecanismo de transferencia real (S3 presigned URL, AS4, etc.)
-    TRANSFERS[tid]["state"] = "completed"
-    audit("transfer_completed", TRANSFERS[tid])
-    return TRANSFERS[tid]
 
-@app.get("/transfers")
-def list_transfers():
-    return list(TRANSFERS.values())
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler"""
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal server error",
+            "detail": str(exc) if settings.log_level == "DEBUG" else "An unexpected error occurred"
+        }
+    )
 
-@app.post("/sync/catalog")
-def sync_catalog():
-    # Llama a la integración con OpenMetadata
-    imported = sync_openmetadata_catalog()
-    audit("catalog_synced", {"items_imported": len(imported)})
-    return {"imported": len(imported)}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "src.main:app",
+        host=settings.api_host,
+        port=settings.api_port,
+        reload=True,
+        log_level=settings.log_level.lower()
+    )
