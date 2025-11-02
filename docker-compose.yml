@@ -1,23 +1,131 @@
 version: '3.8'
 services:
-  db:
+  postgres:
     image: postgres:15
+    container_name: dataspace-postgres
     environment:
       POSTGRES_DB: dataspace
       POSTGRES_USER: dataspace_user
       POSTGRES_PASSWORD: changeme
+    ports:
+      - "5432:5432"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dataspace_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: dataspace-keycloak
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: kc-admin
+      KEYCLOAK_ADMIN_PASSWORD: changeMeAdmin123!
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/dataspace
+      KC_DB_USERNAME: dataspace_user
+      KC_DB_PASSWORD: changeme
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  minio:
+    image: minio/minio:latest
+    container_name: dataspace-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  openmetadata:
+    image: openmetadata/server:1.2.4
+    container_name: dataspace-openmetadata
+    environment:
+      OPENMETADATA_CLUSTER_NAME: openmetadata
+      DB_DRIVER_CLASS: org.postgresql.Driver
+      DB_SCHEME: postgresql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: dataspace_user
+      DB_USER_PASSWORD: changeme
+      DB_NAME: dataspace
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      AUTHENTICATION_PROVIDER: no-auth
+    ports:
+      - "8585:8585"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.16.3
+    container_name: dataspace-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     build: .
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    container_name: dataspace-api
+    command: sh -c "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgres://dataspace_user:changeme@db:5432/dataspace
-      OPENMETADATA_URL: ${OPENMETADATA_URL:-}
-      OPENMETADATA_API_KEY: ${OPENMETADATA_API_KEY:-}
+      DATABASE_URL: postgresql+psycopg://dataspace_user:changeme@postgres:5432/dataspace
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: dataspace
+      KEYCLOAK_CLIENT_ID: dataspace-client
+      KEYCLOAK_CLIENT_SECRET: dataspace-client-secret
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin123
+      S3_BUCKET_NAME: dataspace-transfers
+      OPENMETADATA_URL: http://openmetadata:8585
+      OPENMETADATA_API_KEY: ""
+    volumes:
+      - .:/app
     depends_on:
-      - db
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      minio:
+        condition: service_healthy
+
 volumes:
-  db-data:
+  postgres-data:
+  minio-data:
+  elasticsearch-data:
