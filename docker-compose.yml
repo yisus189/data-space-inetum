@@ -1,23 +1,184 @@
 version: '3.8'
+
 services:
+  # PostgreSQL Database
   db:
     image: postgres:15
+    container_name: dataspace-db
     environment:
       POSTGRES_DB: dataspace
       POSTGRES_USER: dataspace_user
       POSTGRES_PASSWORD: changeme
     volumes:
       - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dataspace_user -d dataspace"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dataspace-network
+
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: dataspace-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dataspace-network
+
+  # Keycloak (Identity and Access Management)
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: dataspace-keycloak
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: kc-admin
+      KEYCLOAK_ADMIN_PASSWORD: changeMeAdmin123!
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/dataspace
+      KC_DB_USERNAME: dataspace_user
+      KC_DB_PASSWORD: changeme
+      KC_HOSTNAME_STRICT: false
+      KC_HTTP_ENABLED: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\r\nhost: 127.0.0.1\r\nConnection: close\r\n\r\n' >&3;grep 'HTTP/1.1 200 OK' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks:
+      - dataspace-network
+
+  # OpenMetadata (Data Catalog) - Dev environment
+  openmetadata-db:
+    image: postgres:15
+    container_name: openmetadata-db
+    environment:
+      POSTGRES_DB: openmetadata_db
+      POSTGRES_USER: openmetadata_user
+      POSTGRES_PASSWORD: openmetadata_password
+    volumes:
+      - openmetadata-db-data:/var/lib/postgresql/data
+    networks:
+      - dataspace-network
+
+  openmetadata:
+    image: openmetadata/server:1.2.0
+    container_name: dataspace-openmetadata
+    environment:
+      DB_DRIVER_CLASS: org.postgresql.Driver
+      DB_SCHEME: postgresql
+      DB_USE_SSL: false
+      DB_USER: openmetadata_user
+      DB_USER_PASSWORD: openmetadata_password
+      DB_HOST: openmetadata-db
+      DB_PORT: 5432
+      OM_DATABASE: openmetadata_db
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      AUTHENTICATION_PROVIDER: no-auth
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+      AUTHORIZER_ADMIN_PRINCIPALS: '[admin]'
+      AUTHORIZER_PRINCIPAL_DOMAIN: open-metadata.org
+    ports:
+      - "8585:8585"
+    depends_on:
+      - openmetadata-db
+      - elasticsearch
+    networks:
+      - dataspace-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9
+    container_name: dataspace-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - dataspace-network
+
+  # Database Migration
+  migration:
+    build: .
+    container_name: dataspace-migration
+    command: alembic upgrade head
+    environment:
+      DATABASE_URL: postgresql://dataspace_user:changeme@db:5432/dataspace
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - dataspace-network
+
+  # FastAPI Application
   api:
     build: .
+    container_name: dataspace-api
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgres://dataspace_user:changeme@db:5432/dataspace
-      OPENMETADATA_URL: ${OPENMETADATA_URL:-}
-      OPENMETADATA_API_KEY: ${OPENMETADATA_API_KEY:-}
+      DATABASE_URL: postgresql://dataspace_user:changeme@db:5432/dataspace
+      OPENMETADATA_URL: http://openmetadata:8585
+      OPENMETADATA_API_KEY: ""
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: dataspace
+      KEYCLOAK_CLIENT_ID: dataspace-client
+      KEYCLOAK_CLIENT_SECRET: dataspace-client-secret
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET: dataspace-transfers
+      MINIO_SECURE: "false"
+    volumes:
+      - ./src:/app/src
+      - ./alembic:/app/alembic
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dataspace-network
+
 volumes:
   db-data:
+  minio-data:
+  openmetadata-db-data:
+  elasticsearch-data:
+
+networks:
+  dataspace-network:
+    driver: bridge

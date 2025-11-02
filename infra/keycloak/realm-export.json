@@ -1,0 +1,105 @@
+{
+  "realm": "dataspace",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "clients": [
+    {
+      "clientId": "dataspace-client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dataspace-client-secret",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "attributes": {
+        "access.token.lifespan": "3600"
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "provider",
+        "description": "Data provider role - can publish and manage datasets"
+      },
+      {
+        "name": "consumer",
+        "description": "Data consumer role - can request and access datasets"
+      },
+      {
+        "name": "broker",
+        "description": "Data broker role - can manage all aspects of the data space"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "provider-user",
+      "enabled": true,
+      "email": "provider@dataspace.local",
+      "emailVerified": true,
+      "firstName": "Provider",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "provider123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["provider"],
+      "attributes": {
+        "organization": ["Provider Corp"]
+      }
+    },
+    {
+      "username": "consumer-user",
+      "enabled": true,
+      "email": "consumer@dataspace.local",
+      "emailVerified": true,
+      "firstName": "Consumer",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "consumer123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["consumer"],
+      "attributes": {
+        "organization": ["Consumer Inc"]
+      }
+    },
+    {
+      "username": "broker-user",
+      "enabled": true,
+      "email": "broker@dataspace.local",
+      "emailVerified": true,
+      "firstName": "Broker",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "broker123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["broker", "provider", "consumer"],
+      "attributes": {
+        "organization": ["Data Space Broker"]
+      }
+    }
+  ]
+}

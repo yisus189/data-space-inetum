@@ -1,0 +1,34 @@
+version: '3.8'
+
+# Development overrides for docker-compose.yml
+# Use: docker-compose -f docker-compose.yml -f infra/docker-compose.override.yml up
+
+services:
+  api:
+    volumes:
+      - ./src:/app/src:ro
+      - ./alembic:/app/alembic:ro
+    environment:
+      LOG_LEVEL: DEBUG
+      RELOAD: "true"
+    ports:
+      - "8000:8000"
+
+  db:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_INITDB_ARGS: "-E UTF8"
+
+  minio:
+    environment:
+      MINIO_BROWSER: "on"
+
+  keycloak:
+    environment:
+      KC_LOG_LEVEL: INFO
+      KC_METRICS_ENABLED: true
+
+  openmetadata:
+    environment:
+      LOG_LEVEL: INFO
