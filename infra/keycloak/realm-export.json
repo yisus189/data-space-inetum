@@ -1,0 +1,144 @@
+{
+  "id": "dataspace",
+  "realm": "dataspace",
+  "displayName": "Data Space Realm",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "provider",
+        "description": "Data provider role - can publish datasets",
+        "composite": false
+      },
+      {
+        "name": "consumer",
+        "description": "Data consumer role - can request and consume datasets",
+        "composite": false
+      },
+      {
+        "name": "broker",
+        "description": "Data broker role - can manage contracts and transfers",
+        "composite": false
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dataspace-client",
+      "name": "Data Space Client",
+      "description": "Client for Data Space API",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dataspace-client-secret",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": true,
+      "attributes": {
+        "access.token.lifespan": "3600",
+        "client.secret.creation.time": "0"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "provider-user",
+      "enabled": true,
+      "email": "provider@dataspace.local",
+      "emailVerified": true,
+      "firstName": "Provider",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "provider123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["provider"],
+      "clientRoles": {}
+    },
+    {
+      "username": "consumer-user",
+      "enabled": true,
+      "email": "consumer@dataspace.local",
+      "emailVerified": true,
+      "firstName": "Consumer",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "consumer123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["consumer"],
+      "clientRoles": {}
+    },
+    {
+      "username": "broker-user",
+      "enabled": true,
+      "email": "broker@dataspace.local",
+      "emailVerified": true,
+      "firstName": "Broker",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "broker123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["broker"],
+      "clientRoles": {}
+    }
+  ],
+  "defaultRoles": [],
+  "requiredCredentials": ["password"],
+  "passwordPolicy": "hashIterations(27500)",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "accessTokenLifespan": 3600,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "enabled": true,
+  "internationalizationEnabled": false,
+  "supportedLocales": [],
+  "browserSecurityHeaders": {
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xContentTypeOptions": "nosniff",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "xXSSProtection": "1; mode=block",
+    "contentSecurityPolicyReportOnly": "",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  },
+  "smtpServer": {},
+  "eventsEnabled": false,
+  "eventsListeners": ["jboss-logging"],
+  "adminEventsEnabled": false,
+  "adminEventsDetailsEnabled": false
+}
