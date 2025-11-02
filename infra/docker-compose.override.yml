@@ -1,0 +1,13 @@
+# Override for local development
+# Use: docker-compose -f docker-compose.yml -f infra/docker-compose.override.yml up
+
+version: '3.8'
+
+services:
+  api:
+    environment:
+      DEBUG: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../src:/app/src:delegated
+      - ../alembic:/app/alembic:delegated

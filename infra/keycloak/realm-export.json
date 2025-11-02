@@ -1,0 +1,92 @@
+{
+  "realm": "dataspace",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "provider",
+        "description": "Data provider role"
+      },
+      {
+        "name": "consumer",
+        "description": "Data consumer role"
+      },
+      {
+        "name": "broker",
+        "description": "Data broker/administrator role"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "provider1",
+      "enabled": true,
+      "email": "provider1@example.com",
+      "firstName": "Provider",
+      "lastName": "One",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "provider123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["provider"]
+    },
+    {
+      "username": "consumer1",
+      "enabled": true,
+      "email": "consumer1@example.com",
+      "firstName": "Consumer",
+      "lastName": "One",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "consumer123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["consumer"]
+    },
+    {
+      "username": "broker1",
+      "enabled": true,
+      "email": "broker1@example.com",
+      "firstName": "Broker",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "broker123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["broker", "provider", "consumer"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "dataspace-api",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "dataspace-client-secret",
+      "redirectUris": ["http://localhost:8000/*"],
+      "webOrigins": ["http://localhost:8000"],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "3600"
+      }
+    }
+  ]
+}
