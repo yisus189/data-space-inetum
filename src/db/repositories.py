@@ -60,7 +60,7 @@ class PublicationRepository:
             title=title,
             description=description,
             owner_id=owner_id,
-            metadata=metadata or {},
+            publication_metadata=metadata or {},
             openmetadata_id=openmetadata_id,
             s3_path=s3_path,
             status=PublicationStatus.ACTIVE

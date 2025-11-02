@@ -85,7 +85,7 @@ class Publication(Base):
     description = Column(Text)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     status = Column(Enum(PublicationStatus), default=PublicationStatus.ACTIVE, nullable=False)
-    metadata = Column(JSON, default=dict)
+    publication_metadata = Column(JSON, default=dict)
     openmetadata_id = Column(String(255), nullable=True, index=True)
     s3_path = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

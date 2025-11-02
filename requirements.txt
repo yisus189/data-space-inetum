@@ -21,8 +21,8 @@ python-keycloak==3.7.0
 # Storage
 boto3==1.29.7
 
-# Catalog Integration
-openmetadata-ingestion==1.2.0
+# Catalog Integration - use lighter package or install separately
+# openmetadata-ingestion==1.2.0
 
 # Testing
 pytest==7.4.3
