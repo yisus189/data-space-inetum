@@ -1,1 +1,103 @@
-<content of infra/docker-compose.override.yml>
+version: "3.8"
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: kc-admin
+      KEYCLOAK_ADMIN_PASSWORD: changeMeAdmin123!
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak/realm-export.json:/realm-export.json:ro
+    entrypoint:
+      - sh
+      - -c
+      - |
+        /opt/keycloak/bin/kc.sh start-dev --import-realm & wait ${!}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/realms/dataspace-realm/.well-known/openid-configuration"]
+      interval: 5s
+      retries: 20
+    networks:
+      - dataspace_net
+
+  minio:
+    image: minio/minio:RELEASE.2025-01-01T00-00-00Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      retries: 12
+    networks:
+      - dataspace_net
+    depends_on:
+      - keycloak
+
+  openmetadata:
+    image: openmetadata/openmetadata:latest
+    environment:
+      METADATA_REST_HOST: 0.0.0.0
+      METADATA_REST_PORT: 8585
+    ports:
+      - "8585:8585"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8585/api/v1/ping || true"]
+      interval: 10s
+      retries: 20
+    networks:
+      - dataspace_net
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: dataspace_user
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: dataspace
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - dataspace_net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://dataspace_user:changeme@db:5432/dataspace
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: dataspace-realm
+      KEYCLOAK_CLIENT_ID: dataspace-api
+      KEYCLOAK_CLIENT_SECRET: dataspace-client-secret
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin123
+      S3_BUCKET: dataspace-transfers
+      OPENMETADATA_URL: http://openmetadata:8585
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - keycloak
+      - minio
+      - openmetadata
+    networks:
+      - dataspace_net
+
+volumes:
+  pgdata:
+  minio-data:
+
+networks:
+  dataspace_net:
+    driver: bridge
