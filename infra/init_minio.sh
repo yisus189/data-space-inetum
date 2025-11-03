@@ -1,0 +1,1 @@
+<content of infra/init_minio.sh>
