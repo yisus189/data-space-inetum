@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # Override the API service to add dependencies and environment variables
+  api:
+    env_file:
+      - .env.local.example
+    depends_on:
+      - db
+      - keycloak
+      - minio
+      - openmetadata-server
+    volumes:
+      - .:/app
+
+  # Keycloak for authentication and authorization
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/keycloak
+      KC_DB_USERNAME: dataspace_user
+      KC_DB_PASSWORD: changeme
+      KC_HOSTNAME_STRICT: false
+      KC_HTTP_ENABLED: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+    depends_on:
+      - db
+
+  # MinIO for object storage
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # MinIO client to initialize bucket
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: /bin/sh /scripts/init_minio.sh
+    volumes:
+      - ./infra/init_minio.sh:/scripts/init_minio.sh
+    restart: on-failure
+
+  # OpenMetadata server (development mode)
+  openmetadata-server:
+    image: openmetadata/server:1.2.0
+    environment:
+      OPENMETADATA_CLUSTER_NAME: openmetadata
+      DB_DRIVER_CLASS: org.postgresql.Driver
+      DB_SCHEME: postgresql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: dataspace_user
+      DB_USER_PASSWORD: changeme
+      DB_DATABASE: openmetadata_db
+      PIPELINE_SERVICE_CLIENT_ENABLED: false
+      AUTHENTICATION_PROVIDER: no-auth
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.NoopAuthorizer
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+    ports:
+      - "8585:8585"
+    depends_on:
+      - db
+      - elasticsearch
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8585/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Elasticsearch for OpenMetadata
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+
+  # Update db service to create multiple databases
+  db:
+    environment:
+      POSTGRES_DB: dataspace
+      POSTGRES_USER: dataspace_user
+      POSTGRES_PASSWORD: changeme
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./infra/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+
+volumes:
+  minio-data:
+  elasticsearch-data:
+  db-data:
