@@ -1,0 +1,75 @@
+{
+  "id": "dataspace-realm",
+  "realm": "dataspace-realm",
+  "displayName": "Data Space Realm",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "provider",
+        "description": "Data provider role",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "consumer",
+        "description": "Data consumer role",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "broker",
+        "description": "Data broker role",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "kc-admin",
+      "enabled": true,
+      "email": "admin@dataspace.local",
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changeMeAdmin123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["provider", "consumer", "broker"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "dataspace-api",
+      "name": "Data Space API Client",
+      "description": "API client for Data Space services",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "dataspace-client-secret",
+      "redirectUris": ["http://localhost:8000/*"],
+      "webOrigins": ["http://localhost:8000"],
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false
+    }
+  ],
+  "clientScopes": [],
+  "defaultDefaultClientScopes": [],
+  "defaultOptionalClientScopes": []
+}
