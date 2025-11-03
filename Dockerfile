@@ -1,1 +1,1 @@
-<content of Dockerfile>
+# Dockerfile for the FastAPI API (phase 0)\nFROM python:3.11-slim\n\nENV PYTHONUNBUFFERED=1\n\nWORKDIR /app\n\n# system deps\nRUN apt-get update && apt-get install -y build-essential curl && rm -rf /var/lib/apt/lists/*\n\n# copy requirements\nCOPY requirements.txt /app/requirements.txt\n\nRUN pip install --no-cache-dir -r /app/requirements.txt\n\n# copy source (phase 0 minimal)\nCOPY src /app/src\n\nEXPOSE 8000\n\nCMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

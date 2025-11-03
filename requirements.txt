@@ -1,1 +1,1 @@
-<content of requirements.txt>
+fastapi==0.95.2\nuvicorn[standard]==0.21.1\nsqlalchemy==2.0.22\nalembic==1.11.1\npsycopg[binary]==3.1.9\npydantic==1.10.12\nrequests==2.31.0\npython-jose==3.3.0\npython-keycloak==0.27.0\nboto3==1.28.40\nopenmetadata-client==0.10.2\npytest==7.4.2\npytest-asyncio==0.22.0\npython-dotenv==1.1.1
