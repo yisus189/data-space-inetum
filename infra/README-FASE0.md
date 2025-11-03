@@ -82,6 +82,8 @@ El sistema se inicializa automáticamente con:
 
 ### Realm: dataspace-realm
 
+**⚠️ NOTA DE SEGURIDAD**: El realm incluye credenciales hardcodeadas para desarrollo. Estas credenciales están en el archivo `infra/keycloak/realm-export.json` y son cargadas automáticamente. Este archivo NO debe usarse en producción.
+
 El realm está preconfigurado con:
 
 - **Roles**:

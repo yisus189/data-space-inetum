@@ -4,11 +4,12 @@ services:
   # Override the API service to add dependencies and environment variables
   api:
     env_file:
-      - .env.local.example
+      - .env.local
     depends_on:
       - db
       - keycloak
       - minio
+      - minio-init
       - openmetadata-server
     volumes:
       - .:/app
@@ -46,7 +47,7 @@ services:
     volumes:
       - minio-data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
       retries: 5
