@@ -35,7 +35,7 @@ def test_create_and_get_participant():
     assert data["username"] == "alice"
 
     pid = data["id"]
-    res2 = client.get(f"/participants/{{pid}}")
+    res2 = client.get(f"/participants/{pid}")
     assert res2.status_code == 200
     assert res2.json()["username"] == "alice"
 
