@@ -22,4 +22,4 @@ def current_user(authorization: Optional[str] = Header(None)) -> str:
     if len(parts) != 2 or parts[0].lower() != "bearer":
         raise HTTPException(status_code=401, detail="Invalid Authorization header format")
     username = parts[1]
-    return username# Content of deps.py here
+    return username
