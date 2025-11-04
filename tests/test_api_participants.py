@@ -1,14 +1,19 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from src.app.main import create_app
 from src.db.models import Base
 from src.db.session import SessionLocal
 
 
-# Use SQLite in-memory for tests
-engine = create_engine("sqlite:///:memory:")
+# Use SQLite in-memory for tests with StaticPool to keep the database alive
+engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
@@ -35,7 +40,7 @@ def test_create_and_get_participant():
     assert data["username"] == "alice"
 
     pid = data["id"]
-    res2 = client.get(f"/participants/{{pid}}")
+    res2 = client.get(f"/participants/{pid}")
     assert res2.status_code == 200
     assert res2.json()["username"] == "alice"
 

@@ -23,7 +23,7 @@ class ParticipantRead(ParticipantBase):
 class PublicationBase(BaseModel):
     title: str
     description: Optional[str]
-    metadata: Optional[Any]
+    metadata_: Optional[Any] = Field(alias='metadata', default=None)
 
 class PublicationCreate(PublicationBase):
     owner_id: int
@@ -31,7 +31,7 @@ class PublicationCreate(PublicationBase):
 class PublicationUpdate(BaseModel):
     title: Optional[str]
     description: Optional[str]
-    metadata: Optional[Any]
+    metadata_: Optional[Any] = Field(alias='metadata', default=None)
 
 class PublicationRead(PublicationBase):
     id: int
@@ -40,6 +40,7 @@ class PublicationRead(PublicationBase):
 
     class Config:
         orm_mode = True
+        allow_population_by_field_name = True
 
 # Request
 class RequestBase(BaseModel):
