@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 
 from src.app.schemas import RequestCreate, RequestRead
-from src.app.deps import get_db, current_user, require_consumer, require_broker, CurrentUser
+from src.app.deps import get_db, current_user, CurrentUser
 from src.db.repositories import RequestRepository, PublicationRepository, AuditRepository
 
 router = APIRouter()
@@ -11,7 +11,7 @@ router = APIRouter()
 def create_request(
     payload: RequestCreate, 
     db=Depends(get_db), 
-    user: CurrentUser = Depends(require_consumer)
+    user: CurrentUser = Depends(current_user)
 ):
     """Create a request. Requires consumer or broker role."""
     if not user.is_consumer() and not user.is_broker():

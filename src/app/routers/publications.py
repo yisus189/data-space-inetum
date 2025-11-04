@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 
 from src.app.schemas import PublicationCreate, PublicationRead, PublicationUpdate
-from src.app.deps import get_db, current_user, require_provider, require_broker, CurrentUser
+from src.app.deps import get_db, current_user, CurrentUser
 from src.db.repositories import PublicationRepository, ParticipantRepository, AuditRepository
 
 router = APIRouter()
@@ -11,10 +11,9 @@ router = APIRouter()
 def create_publication(
     payload: PublicationCreate, 
     db=Depends(get_db), 
-    user: CurrentUser = Depends(require_provider)
+    user: CurrentUser = Depends(current_user)
 ):
     """Create a publication. Requires provider or broker role."""
-    # Allow broker as well by checking if user is broker when provider check fails
     if not user.is_provider() and not user.is_broker():
         raise HTTPException(status_code=403, detail="Provider or broker role required")
     
@@ -46,7 +45,7 @@ def update_publication(
     pub_id: int, 
     payload: PublicationUpdate, 
     db=Depends(get_db), 
-    user: CurrentUser = Depends(require_provider)
+    user: CurrentUser = Depends(current_user)
 ):
     """Update a publication. Requires provider or broker role."""
     if not user.is_provider() and not user.is_broker():
@@ -65,7 +64,7 @@ def update_publication(
 def delete_publication(
     pub_id: int, 
     db=Depends(get_db), 
-    user: CurrentUser = Depends(require_provider)
+    user: CurrentUser = Depends(current_user)
 ):
     """Delete a publication. Requires provider or broker role."""
     if not user.is_provider() and not user.is_broker():
