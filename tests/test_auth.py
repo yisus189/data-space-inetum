@@ -1,7 +1,7 @@
 """Tests for Keycloak OIDC authentication module."""
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -86,7 +86,7 @@ def create_test_token(
     if audience is None:
         audience = settings.KEYCLOAK_AUDIENCE or settings.KEYCLOAK_CLIENT_ID
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     payload = {
         "exp": now + exp_delta,
         "iat": now,
@@ -230,7 +230,7 @@ class TestJWKSFetch:
             jwks1 = fetch_jwks()
             
             # Expire cache to force fetch
-            _jwks_cache["expires_at"] = datetime.utcnow() - timedelta(seconds=1)
+            _jwks_cache["expires_at"] = datetime.now(timezone.utc) - timedelta(seconds=1)
             
             jwks2 = fetch_jwks()
             assert jwks1 == jwks2

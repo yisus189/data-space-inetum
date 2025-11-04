@@ -1,6 +1,6 @@
 """Keycloak OIDC authentication and authorization module."""
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import requests
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -68,7 +68,7 @@ def fetch_jwks() -> dict:
     global _jwks_cache
     
     # Check if cache is still valid
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if _jwks_cache["keys"] and _jwks_cache["expires_at"]:
         if now < _jwks_cache["expires_at"]:
             return _jwks_cache["keys"]
