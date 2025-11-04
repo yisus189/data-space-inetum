@@ -47,7 +47,7 @@ class PublicationRepository:
         p = Publication(
             title=payload.title,
             description=payload.description,
-            metadata=payload.metadata,
+            metadata_=payload.metadata,
             owner_id=payload.owner_id
         )
         self.db.add(p)
@@ -69,7 +69,7 @@ class PublicationRepository:
             if payload.description is not None:
                 p.description = payload.description
             if payload.metadata is not None:
-                p.metadata = payload.metadata
+                p.metadata_ = payload.metadata
             self.db.commit()
             self.db.refresh(p)
         return p

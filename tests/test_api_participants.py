@@ -1,16 +1,22 @@
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from unittest.mock import MagicMock
 
-from src.app.main import create_app
-from src.db.models import Base
+# Import all models first to ensure they're registered with Base
+from src.db.models import Base, Participant, Publication, Request, Contract, Transfer, AuditLog
 from src.db.session import SessionLocal
 from src.auth.keycloak import CurrentUser
+from src.app.main import create_app
 
 
-# Use SQLite in-memory for tests
-engine = create_engine("sqlite:///:memory:")
+# Use SQLite in-memory for tests with StaticPool to share connection
+engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
