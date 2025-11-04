@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional, Any
 from datetime import datetime
 
@@ -21,26 +21,41 @@ class ParticipantRead(ParticipantBase):
 
 # Publication
 class PublicationBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
     title: str
-    description: Optional[str]
-    metadata_: Optional[Any] = Field(alias='metadata', default=None)
+    description: Optional[str] = None
+    metadata: Optional[Any] = None
 
 class PublicationCreate(PublicationBase):
     owner_id: int
 
 class PublicationUpdate(BaseModel):
-    title: Optional[str]
-    description: Optional[str]
-    metadata_: Optional[Any] = Field(alias='metadata', default=None)
+    title: Optional[str] = None
+    description: Optional[str] = None
+    metadata: Optional[Any] = None
 
 class PublicationRead(PublicationBase):
     id: int
     owner_id: int
     created_at: datetime
-
-    class Config:
-        orm_mode = True
-        allow_population_by_field_name = True
+    
+    @model_validator(mode='wrap')
+    @classmethod
+    def _extract_pub_metadata(cls, value, handler):
+        """Extract pub_metadata from ORM object and map to metadata field."""
+        if hasattr(value, '__dict__') and hasattr(value, 'pub_metadata'):
+            # This is an ORM object
+            return cls(
+                id=value.id,
+                title=value.title,
+                description=value.description,
+                metadata=value.pub_metadata,
+                owner_id=value.owner_id,
+                created_at=value.created_at
+            )
+        # Otherwise use default handler
+        return handler(value)
 
 # Request
 class RequestBase(BaseModel):

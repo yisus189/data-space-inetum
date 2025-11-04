@@ -2,10 +2,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from unittest.mock import patch, MagicMock
 
 from src.app.main import create_app
 from src.db.models import Base
 from src.db.session import SessionLocal
+from src.auth.keycloak import jwks_cache
+from tests.test_utils import create_test_jwt, create_test_jwks
 
 
 # Use SQLite in-memory for tests with StaticPool to keep the database alive
@@ -31,10 +34,26 @@ app.dependency_overrides = {}
 from src.app.deps import get_db as real_get_db
 app.dependency_overrides[real_get_db] = override_get_db
 
+# Mock JWKS endpoint for authentication tests
+test_jwks = create_test_jwks()
+jwks_patcher = patch('src.auth.keycloak.requests.get')
+mock_jwks_get = jwks_patcher.start()
+mock_response = MagicMock()
+mock_response.json.return_value = test_jwks
+mock_response.raise_for_status = MagicMock()
+mock_jwks_get.return_value = mock_response
+
 client = TestClient(app)
 
 def test_create_and_get_participant():
-    res = client.post("/participants/", json={"username": "alice", "display_name": "Alice"}, headers={"Authorization": "Bearer alice"})
+    # Create a test JWT token for authentication
+    token = create_test_jwt(username="alice", roles=["provider"])
+    
+    res = client.post(
+        "/participants/",
+        json={"username": "alice", "display_name": "Alice"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
     assert res.status_code == 201
     data = res.json()
     assert data["username"] == "alice"

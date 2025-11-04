@@ -45,7 +45,14 @@ class PublicationRepository:
         self.db = db
     
     def create(self, payload):
-        p = Publication(**payload.dict())
+        # Explicitly extract fields
+        data = payload.dict() if hasattr(payload, 'dict') else payload.model_dump()
+        p = Publication(
+            title=data.get('title'),
+            description=data.get('description'),
+            pub_metadata=data.get('metadata'),
+            owner_id=data.get('owner_id')
+        )
         self.db.add(p)
         self.db.commit()
         self.db.refresh(p)
@@ -60,8 +67,13 @@ class PublicationRepository:
     def update(self, pub_id: int, payload):
         p = self.get(pub_id)
         if p:
-            for k, v in payload.dict(exclude_unset=True).items():
-                setattr(p, k, v)
+            data = payload.dict(exclude_unset=True) if hasattr(payload, 'dict') else payload.model_dump(exclude_unset=True)
+            if 'title' in data:
+                p.title = data['title']
+            if 'description' in data:
+                p.description = data['description']
+            if 'metadata' in data:
+                p.pub_metadata = data['metadata']
             self.db.commit()
             self.db.refresh(p)
         return p

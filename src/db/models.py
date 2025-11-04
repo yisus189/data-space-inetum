@@ -21,7 +21,7 @@ class Publication(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String(255), nullable=False)
     description = Column(Text)
-    metadata_ = Column('metadata', JSON)
+    pub_metadata = Column('metadata', JSON)
     owner_id = Column(Integer, ForeignKey('participants.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     owner = relationship('Participant')
