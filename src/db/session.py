@@ -9,7 +9,7 @@ DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql+psycopg://dataspace_user:ch
 try:
     engine = create_engine(DATABASE_URL, pool_pre_ping=True)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-except Exception:
+except (ImportError, SQLAlchemyError) as e:
     # In tests or when psycopg is not available, use a dummy sessionmaker
     # Tests will override get_db anyway
     engine = None

@@ -1,5 +1,6 @@
 """Keycloak OIDC authentication with JWKS token validation."""
 import time
+import logging
 from typing import Dict, Optional, List
 import requests
 from jose import jwt, JWTError
@@ -7,6 +8,8 @@ from jose.exceptions import ExpiredSignatureError, JWTClaimsError
 from fastapi import HTTPException, status
 
 from src.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class JWKSCache:
@@ -36,9 +39,9 @@ class JWKSCache:
         except requests.RequestException as e:
             # If we have cached keys, use them even if stale
             if self._keys is not None:
-                # Log warning but continue with stale cache
-                pass
+                logger.warning(f"JWKS fetch failed, using stale cache: {str(e)}")
             else:
+                logger.error(f"JWKS fetch failed and no cache available: {str(e)}")
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail=f"Unable to fetch JWKS from Keycloak: {str(e)}"
