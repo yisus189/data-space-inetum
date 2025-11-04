@@ -1,14 +1,21 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from unittest.mock import MagicMock
 
 from src.app.main import create_app
 from src.db.models import Base
 from src.db.session import SessionLocal
+from src.auth.keycloak import CurrentUser
 
 
-# Use SQLite in-memory for tests
-engine = create_engine("sqlite:///:memory:")
+# Use SQLite in-memory for tests with StaticPool to share connection
+engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base.metadata.create_all(bind=engine)
 
@@ -22,20 +29,30 @@ def override_get_db():
     finally:
         db.close()
 
+# Mock current_user to return a test user
+def mock_current_user():
+    return CurrentUser(
+        preferred_username="alice",
+        email="alice@test.com",
+        roles=["provider", "consumer", "broker"],
+        sub="test-user-123"
+    )
+
 app.dependency_overrides = {}
-from src.app.deps import get_db as real_get_db
+from src.app.deps import get_db as real_get_db, current_user as real_current_user
 app.dependency_overrides[real_get_db] = override_get_db
+app.dependency_overrides[real_current_user] = mock_current_user
 
 client = TestClient(app)
 
 def test_create_and_get_participant():
-    res = client.post("/participants/", json={"username": "alice", "display_name": "Alice"}, headers={"Authorization": "Bearer alice"})
+    res = client.post("/participants/", json={"username": "alice", "display_name": "Alice"})
     assert res.status_code == 201
     data = res.json()
     assert data["username"] == "alice"
 
     pid = data["id"]
-    res2 = client.get(f"/participants/{{pid}}")
+    res2 = client.get(f"/participants/{pid}")
     assert res2.status_code == 200
     assert res2.json()["username"] == "alice"
 
