@@ -1,7 +1,17 @@
-from fastapi import Header, HTTPException
-from typing import Optional
-
+"""
+Application dependencies facade.
+This module re-exports authentication and database dependencies,
+keeping routers decoupled from the actual implementation.
+"""
 from src.db.session import get_db as get_db_session
+from src.auth.keycloak import (
+    current_user,
+    require_provider,
+    require_consumer,
+    require_broker,
+    CurrentUser
+)
+
 
 def get_db():
     """
@@ -10,16 +20,13 @@ def get_db():
     """
     yield from get_db_session()
 
-def current_user(authorization: Optional[str] = Header(None)) -> str:
-    """
-    Development placeholder for current user.
-    Accepts Authorization: Bearer <username> and returns the username.
-    In Fase 2 replace with real Keycloak token validation.
-    """
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Missing Authorization header")
-    parts = authorization.split()
-    if len(parts) != 2 or parts[0].lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Invalid Authorization header format")
-    username = parts[1]
-    return username# Content of deps.py here
+
+# Re-export auth dependencies for use in routers
+__all__ = [
+    "get_db",
+    "current_user",
+    "require_provider",
+    "require_consumer",
+    "require_broker",
+    "CurrentUser"
+]
