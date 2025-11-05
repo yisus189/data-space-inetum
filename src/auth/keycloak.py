@@ -5,7 +5,7 @@ Implements JWT verification using JWKS with RS256, caching with ETag and TTL,
 and RBAC guards for FastAPI endpoints.
 """
 import time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 
 import requests
@@ -28,7 +28,7 @@ _jwks_cache: Dict[str, Any] = {
 class CurrentUser(BaseModel):
     """Represents the current authenticated user."""
     username: str
-    roles: list[str] = []
+    roles: List[str] = []
     raw_token: Dict[str, Any] = {}
 
 
