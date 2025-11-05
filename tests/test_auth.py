@@ -52,8 +52,11 @@ def generate_test_keypair():
     public_numbers = public_key.public_numbers()
     
     # Convert to base64url encoding for JWKS
-    n = base64url_encode(public_numbers.n.to_bytes(256, byteorder='big'))
-    e = base64url_encode(public_numbers.e.to_bytes(3, byteorder='big'))
+    # Calculate byte length dynamically to handle variable key sizes
+    n_bytes = (public_numbers.n.bit_length() + 7) // 8
+    e_bytes = (public_numbers.e.bit_length() + 7) // 8
+    n = base64url_encode(public_numbers.n.to_bytes(n_bytes, byteorder='big'))
+    e = base64url_encode(public_numbers.e.to_bytes(e_bytes, byteorder='big'))
     
     return private_pem, public_pem, n.decode('utf-8'), e.decode('utf-8')
 
