@@ -10,7 +10,8 @@
   "clients": [
     {
       "clientId": "dataspace-api",
-      "enabled": true
+      "enabled": true,
+      "publicClient": true
     }
   ],
   "users": [
@@ -19,21 +20,24 @@
       "enabled": true,
       "credentials": [
         { "type": "password", "value": "password" }
-      ]
+      ],
+      "realmRoles": ["provider"]
     },
     {
       "username": "consumer1",
       "enabled": true,
       "credentials": [
         { "type": "password", "value": "password" }
-      ]
+      ],
+      "realmRoles": ["consumer"]
     },
     {
       "username": "broker1",
       "enabled": true,
       "credentials": [
         { "type": "password", "value": "password" }
-      ]
+      ],
+      "realmRoles": ["broker"]
     }
   ]
 }
