@@ -53,6 +53,7 @@ def generate_test_keypair():
     
     # Convert to base64url encoding for JWKS
     # Calculate byte length dynamically to handle variable key sizes
+    # This prevents issues with leading zero bytes and ensures proper base64url encoding
     n_bytes = (public_numbers.n.bit_length() + 7) // 8
     e_bytes = (public_numbers.e.bit_length() + 7) // 8
     n = base64url_encode(public_numbers.n.to_bytes(n_bytes, byteorder='big'))
@@ -370,20 +371,18 @@ class TestCurrentUserDependency:
 class TestRoleRequirements:
     """Tests for role-based access control."""
     
-    @patch('src.auth.keycloak.current_user')
-    def test_require_provider_success(self, mock_current_user):
+    def test_require_provider_success(self):
         """Test require_provider with user having provider role."""
-        from src.auth.keycloak import require_provider
+        from src.auth.keycloak import require_role
         
         mock_user = CurrentUser(
             username="testuser",
             sub="user-123",
             roles=["provider", "consumer"]
         )
-        mock_current_user.return_value = mock_user
         
-        # Get the dependency function
-        role_checker = require_provider
+        # Get the role checker dependency
+        role_checker = require_role("provider")
         user = role_checker(mock_user)
         
         assert user.username == "testuser"

@@ -238,7 +238,9 @@ def require_role(required_role: str):
     return role_checker
 
 
-# Predefined role dependencies
+# Predefined role dependencies for common use cases
+# Each call to require_role() returns a new dependency function,
+# so these can be safely reused across multiple endpoints
 require_provider = require_role('provider')
 require_consumer = require_role('consumer')
 require_broker = require_role('broker')
