@@ -1,1 +1,43 @@
-{\n  "realm": "dataspace-realm",\n  "enabled": true,\n  "roles": {\n    "realm": [\n      "provider",\n      "consumer",\n      "broker"\n    ]\n  },\n  "clients": [\n    {\n      "clientId": "dataspace-api",\n      "enabled": true,\n      "publicClient": false,\n      "secret": "dataspace-client-secret",\n      "directAccessGrantsEnabled": true,\n      "serviceAccountsEnabled": true,\n      "redirectUris": [],\n      "protocol": "openid-connect",\n      "standardFlowEnabled": false,\n      "implicitFlowEnabled": false,\n      "attributes": {\n        "access.token.lifespan": "300"\n      }\n    }\n  ],\n  "users": [\n    {\n      "username": "kc-admin",\n      "enabled": true,\n      "emailVerified": true,\n      "credentials": [\n        {\n          "type": "password",\n          "value": "changeMeAdmin123!",\n          "temporary": false\n        }\n      ],\n      "realmRoles": [\n        "provider",\n        "consumer",\n        "broker",\n        "offline_access",\n        "uma_authorization"\n      ]\n    }\n  ]\n}
+{
+  "realm": "myrealm",
+  "roles": {
+    "realm": [
+      { "name": "provider" },
+      { "name": "consumer" },
+      { "name": "broker" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dataspace-api",
+      "enabled": true,
+      "publicClient": true
+    }
+  ],
+  "users": [
+    {
+      "username": "provider1",
+      "enabled": true,
+      "credentials": [
+        { "type": "password", "value": "password" }
+      ],
+      "realmRoles": ["provider"]
+    },
+    {
+      "username": "consumer1",
+      "enabled": true,
+      "credentials": [
+        { "type": "password", "value": "password" }
+      ],
+      "realmRoles": ["consumer"]
+    },
+    {
+      "username": "broker1",
+      "enabled": true,
+      "credentials": [
+        { "type": "password", "value": "password" }
+      ],
+      "realmRoles": ["broker"]
+    }
+  ]
+}

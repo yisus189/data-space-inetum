@@ -1,44 +1,36 @@
-from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from src.app.deps import get_db, require_consumer, CurrentUser
 from src.app.schemas import RequestCreate, RequestRead
-from src.app.deps import get_db, current_user
-from src.db.repositories import RequestRepository, PublicationRepository, AuditRepository
+from src.db.repositories import RequestRepository
 
-router = APIRouter()
+router = APIRouter(prefix="/requests", tags=["requests"])
 
-@router.post("/", response_model=RequestRead, status_code=status.HTTP_201_CREATED)
-def create_request(payload: RequestCreate, db=Depends(get_db), user=Depends(current_user)):
-    pub_repo = PublicationRepository(db)
+
+@router.post("", response_model=RequestRead, status_code=status.HTTP_201_CREATED)
+def create_request(
+    payload: RequestCreate,
+    user: CurrentUser = Depends(require_consumer),
+    db: Session = Depends(get_db),
+):
     repo = RequestRepository(db)
-    audit = AuditRepository(db)
-    pub = pub_repo.get(payload.publication_id)
-    if not pub:
-        raise HTTPException(status_code=400, detail="publication not found")
-    r = repo.create(payload, requester_username=user)
-    audit.create(actor=user, action="create_request", resource_type="request", resource_id=str(r.id), details={"publication_id": payload.publication_id})
+    r = repo.create(payload, requester_username=user.preferred_username)
     return r
 
-@router.get("/", response_model=List[RequestRead])
-def list_requests(db=Depends(get_db)):
+
+@router.get("", response_model=List[RequestRead])
+def list_requests(db: Session = Depends(get_db)):
     repo = RequestRepository(db)
     return repo.list()
 
-@router.get("/{req_id}", response_model=RequestRead)
-def get_request(req_id: int, db=Depends(get_db)):
-    repo = RequestRepository(db)
-    r = repo.get(req_id)
-    if not r:
-        raise HTTPException(status_code=404, detail="request not found")
-    return r
 
-@router.put("/{req_id}", response_model=RequestRead)
-def update_request(req_id: int, payload: RequestCreate, db=Depends(get_db), user=Depends(current_user)):
+@router.get("/{request_id}", response_model=RequestRead)
+def get_request(request_id: int, db: Session = Depends(get_db)):
     repo = RequestRepository(db)
-    audit = AuditRepository(db)
-    r = repo.get(req_id)
+    r = repo.get(request_id)
     if not r:
         raise HTTPException(status_code=404, detail="request not found")
-    r = repo.update(req_id, payload)
-    audit.create(actor=user, action="update_request", resource_type="request", resource_id=str(req_id), details={"status": r.status})
     return r
