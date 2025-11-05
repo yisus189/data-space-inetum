@@ -1,6 +1,6 @@
 import base64
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
 from unittest.mock import patch
 
 import pytest
@@ -14,7 +14,7 @@ def _b64url_uint(n: int) -> str:
     b = n.to_bytes((n.bit_length() + 7) // 8, "big")
     return base64.urlsafe_b64encode(b).rstrip(b"=").decode("ascii")
 
-def _gen_keypair_and_jwks(kid: str = "test-kid") -> (str, Dict[str, Any]):
+def _gen_keypair_and_jwks(kid: str = "test-kid") -> Tuple[str, Dict[str, Any]]:
     # Generate RSA keypair for tests
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     priv_pem_bytes = private_key.private_bytes(
@@ -71,6 +71,7 @@ def _make_token(claims: Dict[str, Any], private_pem: str) -> str:
         algorithm="RS256",
         headers=headers,
     )
+
 
 def test_valid_token_decodes_roles(jwks_mock):
     private_pem = jwks_mock
