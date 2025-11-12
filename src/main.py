@@ -3,8 +3,19 @@ from pydantic import BaseModel
 from typing import Optional, List
 import uuid
 from .catalog import sync_openmetadata_catalog
+from .app.middleware.errors import ErrorHandlerMiddleware
+from .app.metrics import router as metrics_router
+from .config import get_settings
 
 app = FastAPI(title="Data Space API (IDS/DSSC)")
+
+# Add error handling middleware
+app.add_middleware(ErrorHandlerMiddleware)
+
+# Add metrics endpoint if enabled
+settings = get_settings()
+if settings.PROMETHEUS_ENABLED:
+    app.include_router(metrics_router, tags=["monitoring"])
 
 # In-memory stores (ejemplo). En producción usar DB.
 PUBLICATIONS = {}
