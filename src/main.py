@@ -1,10 +1,32 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
 from typing import Optional, List
 import uuid
 from .catalog import sync_openmetadata_catalog
+from .config import get_settings
+from .app.middleware.errors import (
+    ErrorHandlingMiddleware,
+    http_exception_handler,
+    validation_exception_handler
+)
+from .app.middleware.logging import RequestLoggingMiddleware, setup_logging
+from .app.middleware.metrics import PrometheusMiddleware, get_metrics
+
+# Setup logging
+settings = get_settings()
+setup_logging(settings.LOG_LEVEL)
 
 app = FastAPI(title="Data Space API (IDS/DSSC)")
+
+# Register exception handlers
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
+# Add middleware (order matters: last added is executed first)
+app.add_middleware(PrometheusMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(ErrorHandlingMiddleware)
 
 # In-memory stores (ejemplo). En producción usar DB.
 PUBLICATIONS = {}
@@ -95,3 +117,13 @@ def sync_catalog():
     imported = sync_openmetadata_catalog()
     audit("catalog_synced", {"items_imported": len(imported)})
     return {"imported": len(imported)}
+
+@app.get("/metrics")
+def metrics():
+    """Prometheus metrics endpoint."""
+    return get_metrics()
+
+@app.get("/health")
+def health():
+    """Health check endpoint."""
+    return {"status": "healthy"}
