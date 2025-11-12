@@ -2,9 +2,25 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 import uuid
+import logging
 from .catalog import sync_openmetadata_catalog
+from .app.middleware.errors import ErrorHandlerMiddleware, RequestLoggingMiddleware, create_error_handlers
+from .app.metrics import metrics_endpoint
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 app = FastAPI(title="Data Space API (IDS/DSSC)")
+
+# Add middleware
+app.add_middleware(ErrorHandlerMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+
+# Add error handlers
+create_error_handlers(app)
 
 # In-memory stores (ejemplo). En producción usar DB.
 PUBLICATIONS = {}
@@ -95,3 +111,8 @@ def sync_catalog():
     imported = sync_openmetadata_catalog()
     audit("catalog_synced", {"items_imported": len(imported)})
     return {"imported": len(imported)}
+
+@app.get("/metrics")
+def get_metrics():
+    """Prometheus metrics endpoint."""
+    return metrics_endpoint()
