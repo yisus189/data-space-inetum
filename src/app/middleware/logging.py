@@ -62,12 +62,39 @@ def setup_logging(log_level: str = "INFO"):
     Args:
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     """
-    logging.basicConfig(
-        level=getattr(logging, log_level.upper()),
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s [%(request_id)s]",
+    # Custom filter to add default request_id if missing
+    class RequestIdFilter(logging.Filter):
+        def filter(self, record):
+            if not hasattr(record, 'request_id'):
+                record.request_id = '-'
+            return True
+    
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, log_level.upper()))
+    
+    # Remove existing handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(getattr(logging, log_level.upper()))
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s [%(request_id)s]",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+    console_handler.setFormatter(formatter)
+    
+    # Add filter
+    console_handler.addFilter(RequestIdFilter())
+    
+    # Add handler to root logger
+    root_logger.addHandler(console_handler)
     
     # Set third-party loggers to WARNING to reduce noise
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
     logging.getLogger("fastapi").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
