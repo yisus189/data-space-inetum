@@ -1,10 +1,41 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel
 from typing import Optional, List
 import uuid
 from .catalog import sync_openmetadata_catalog
+from .app.middleware.errors import ErrorHandlerMiddleware
+from .app.metrics import router as metrics_router
+from .config import get_settings
 
 app = FastAPI(title="Data Space API (IDS/DSSC)")
+
+# Add error handling middleware
+app.add_middleware(ErrorHandlerMiddleware)
+
+# Add custom exception handler for validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors with structured JSON response."""
+    request_id = getattr(request.state, 'request_id', str(uuid.uuid4()))
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "Request validation failed",
+                "request_id": request_id,
+                "details": exc.errors()
+            }
+        },
+        headers={"X-Request-ID": request_id}
+    )
+
+# Add metrics endpoint if enabled
+settings = get_settings()
+if settings.PROMETHEUS_ENABLED:
+    app.include_router(metrics_router, tags=["monitoring"])
 
 # In-memory stores (ejemplo). En producción usar DB.
 PUBLICATIONS = {}
