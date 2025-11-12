@@ -3,11 +3,17 @@ Configuration settings for the Data Space application.
 """
 from functools import lru_cache
 from typing import Optional
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
+    
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=True
+    )
     
     # Database
     DATABASE_URL: str = "postgres://dataspace_user:changeme@db:5432/dataspace"
@@ -27,10 +33,6 @@ class Settings(BaseSettings):
     
     # Prometheus metrics
     PROMETHEUS_ENABLED: bool = True
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
 
 
 @lru_cache()

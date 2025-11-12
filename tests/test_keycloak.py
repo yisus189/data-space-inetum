@@ -3,6 +3,7 @@ Unit tests for JWKS cache and token verification.
 """
 import time
 import pytest
+import requests
 from unittest.mock import Mock, patch, MagicMock
 import jwt
 from fastapi import HTTPException
@@ -170,8 +171,8 @@ class TestJWKSCache:
         
         # First two calls fail, third succeeds
         mock_get.side_effect = [
-            Exception("Network error"),
-            Exception("Network error"),
+            requests.exceptions.RequestException("Network error"),
+            requests.exceptions.RequestException("Network error"),
             mock_response
         ]
         mock_response.json.return_value = sample_jwks
@@ -187,7 +188,7 @@ class TestJWKSCache:
     def test_get_jwks_fails_after_max_retries(self, mock_get, mock_get_settings, mock_settings):
         """Test that HTTPException is raised after max retries."""
         mock_get_settings.return_value = mock_settings
-        mock_get.side_effect = Exception("Network error")
+        mock_get.side_effect = requests.exceptions.RequestException("Network error")
         
         with pytest.raises(HTTPException) as exc_info:
             keycloak._fetch_jwks_with_retry(max_retries=3)
