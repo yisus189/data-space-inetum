@@ -71,7 +71,7 @@ class MinIOStorage:
         dataset_id: Optional[str] = None
     ) -> str:
         """Generate a unique object key for a file."""
-        unique_id = str(uuid.uuid4())[:8]
+        unique_id = str(uuid.uuid4())
         if dataset_id:
             return f"datasets/{provider_id}/{dataset_id}/{unique_id}_{filename}"
         return f"uploads/{provider_id}/{unique_id}_{filename}"

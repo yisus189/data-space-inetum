@@ -51,7 +51,7 @@ const UploadDataset: React.FC = () => {
     if (event.target.files) {
       const newFiles = Array.from(event.target.files).map((file) => ({
         file,
-        id: Math.random().toString(36).substr(2, 9),
+        id: Math.random().toString(36).substring(2, 11),
       }));
       setFiles((prev) => [...prev, ...newFiles]);
     }
@@ -66,7 +66,7 @@ const UploadDataset: React.FC = () => {
     if (event.dataTransfer.files) {
       const newFiles = Array.from(event.dataTransfer.files).map((file) => ({
         file,
-        id: Math.random().toString(36).substr(2, 9),
+        id: Math.random().toString(36).substring(2, 11),
       }));
       setFiles((prev) => [...prev, ...newFiles]);
     }

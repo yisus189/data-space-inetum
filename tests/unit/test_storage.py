@@ -39,6 +39,9 @@ class TestMinIOStorage:
         key = storage.generate_object_key("test.csv", "provider-123", "dataset-456")
         assert key.startswith("datasets/provider-123/dataset-456/")
         assert key.endswith("_test.csv")
+        # UUID should be full length (36 chars including hyphens)
+        uuid_part = key.split("/")[-1].split("_")[0]
+        assert len(uuid_part) == 36
         
         # Test without dataset_id
         key = storage.generate_object_key("test.csv", "provider-123")

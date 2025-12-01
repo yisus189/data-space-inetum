@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: dataspace
       POSTGRES_USER: dataspace_user
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - db-data:/var/lib/postgresql/data
     ports:
@@ -22,8 +22,8 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
     volumes:
       - minio-data:/data
     ports:
@@ -41,7 +41,7 @@ services:
     command: start-dev --import-realm
     environment:
       KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HTTP_PORT: 8180
     volumes:
       - ./config/keycloak:/opt/keycloak/data/import
@@ -62,12 +62,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://dataspace_user:changeme@db:5432/dataspace
+      DATABASE_URL: postgresql://dataspace_user:${DB_PASSWORD:-changeme}@db:5432/dataspace
       OPENMETADATA_URL: ${OPENMETADATA_URL:-http://openmetadata:8585}
       OPENMETADATA_API_KEY: ${OPENMETADATA_API_KEY:-}
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: dataspace
       KEYCLOAK_URL: http://keycloak:8180
       KEYCLOAK_REALM: myrealm
