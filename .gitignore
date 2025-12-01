@@ -1,3 +1,38 @@
+# Python
 .venv
 __pycache__
+*.pyc
+*.pyo
+*.egg-info
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Storage
 storage/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Node (for frontend)
+node_modules/
+.next/
+out/
+build/
+.turbo/
