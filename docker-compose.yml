@@ -1,5 +1,6 @@
 version: '3.8'
 services:
+  # PostgreSQL Database
   db:
     image: postgres:15
     environment:
@@ -8,16 +9,117 @@ services:
       POSTGRES_PASSWORD: changeme
     volumes:
       - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dataspace_user -d dataspace"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Keycloak Identity Provider
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8180
+    volumes:
+      - ./config/keycloak:/opt/keycloak/data/import
+    ports:
+      - "8180:8180"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8180/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Backend API
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgres://dataspace_user:changeme@db:5432/dataspace
-      OPENMETADATA_URL: ${OPENMETADATA_URL:-}
+      DATABASE_URL: postgresql://dataspace_user:changeme@db:5432/dataspace
+      OPENMETADATA_URL: ${OPENMETADATA_URL:-http://openmetadata:8585}
       OPENMETADATA_API_KEY: ${OPENMETADATA_API_KEY:-}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: dataspace
+      KEYCLOAK_URL: http://keycloak:8180
+      KEYCLOAK_REALM: myrealm
+      KEYCLOAK_CLIENT_ID: dataspace-ui
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+      AUTO_CREATE_TABLES: "true"
+      LOG_JSON: "false"
+      LOG_LEVEL: INFO
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+
+  # Frontend (development)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:8000
+      VITE_KEYCLOAK_URL: http://localhost:8180
+      VITE_KEYCLOAK_REALM: myrealm
+      VITE_KEYCLOAK_CLIENT_ID: dataspace-ui
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+    depends_on:
+      - api
+
+  # OpenMetadata (optional - comment out if not needed)
+  # openmetadata:
+  #   image: openmetadata/openmetadata:latest
+  #   environment:
+  #     - OMDB_HOST=db
+  #     - OMDB_PORT=5432
+  #     - JDBC_URL=jdbc:postgresql://db:5432/openmetadata
+  #   ports:
+  #     - "8585:8585"
+  #   depends_on:
+  #     - db
+
+  # Redis (for Celery if needed)
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+
 volumes:
   db-data:
+  minio-data:

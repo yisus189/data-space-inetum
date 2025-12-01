@@ -1,0 +1,82 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Secrets
+.secrets/
+*.pem
+*.key
+
+# Node.js (frontend)
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+.npm
+.eslintcache
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Generated files
+examples/catalog_ids.json
+jwt.txt
+
+# Test artifacts
+/tmp/
+test.db
+
+# MinIO data (local development)
+minio-data/

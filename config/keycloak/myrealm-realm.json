@@ -1,0 +1,162 @@
+{
+  "realm": "myrealm",
+  "enabled": true,
+  "displayName": "Data Space Realm",
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "provider",
+        "description": "Data provider role - can upload and manage datasets"
+      },
+      {
+        "name": "consumer",
+        "description": "Data consumer role - can view and request datasets"
+      },
+      {
+        "name": "admin",
+        "description": "Administrator role - full access"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dataspace-ui",
+      "name": "Data Space UI",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:5173"
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access"
+      ],
+      "attributes": {
+        "access.token.lifespan": "3600",
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "dataspace-api",
+      "name": "Data Space API",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "secret": "change-me-in-production",
+      "defaultClientScopes": [
+        "roles",
+        "profile",
+        "email"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "provider-user",
+      "email": "provider@example.com",
+      "firstName": "Provider",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["provider", "consumer"]
+    },
+    {
+      "username": "consumer-user",
+      "email": "consumer@example.com",
+      "firstName": "Consumer",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["consumer"]
+    },
+    {
+      "username": "admin-user",
+      "email": "admin@example.com",
+      "firstName": "Admin",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin", "provider", "consumer"]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "web-origins",
+    "roles",
+    "profile",
+    "email"
+  ],
+  "clientScopes": [
+    {
+      "name": "roles",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "user.attribute": "foo",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ]
+}
