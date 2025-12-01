@@ -1,12 +1,16 @@
 version: '3.8'
 
+# ⚠️ SECURITY WARNING: Default passwords are used for development only.
+# CHANGE ALL PASSWORDS BEFORE DEPLOYING TO PRODUCTION!
+# See .env.example and docs/guides/SETUP.md for production configuration.
+
 services:
   db:
     image: postgres:15
     environment:
       POSTGRES_DB: dataspace
       POSTGRES_USER: dataspace_user
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_PASSWORD: changeme  # ⚠️ CHANGE IN PRODUCTION
     ports:
       - "5432:5432"
     volumes:

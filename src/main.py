@@ -4,11 +4,19 @@ from src.logging import attach_request_id, configure_logging
 from src.monitoring import router as monitoring_router
 from src.app.routers import datasets, openmetadata, policies_router, contract_router, edc_router
 from src.config import get_settings
+import logging
 
 settings = get_settings()
 
 def create_app() -> FastAPI:
-    configure_logging(settings.LOG_LEVEL)
+    # Configure logging with error handling
+    try:
+        configure_logging(settings.LOG_LEVEL)
+    except Exception as e:
+        # Fallback to basic logging if configuration fails
+        logging.basicConfig(level=logging.INFO)
+        logging.error(f"Failed to configure structured logging: {e}")
+    
     app = FastAPI(
         title="Data Space API",
         description="IDSA & DSSC compliant Data Space with Keycloak Auth, MinIO Storage, and OpenMetadata Integration",
