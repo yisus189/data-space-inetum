@@ -1,0 +1,112 @@
+{
+  "realm": "myrealm",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "provider",
+        "description": "Data provider role",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "consumer",
+        "description": "Data consumer role",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dataspace-ui",
+      "enabled": true,
+      "publicClient": true,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:8000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:8000"
+      ],
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "attributes": {
+        "access.token.lifespan": "3600"
+      },
+      "protocolMappers": [
+        {
+          "name": "provider_id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "provider_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "provider_id",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "dataspace-api",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "redirectUris": ["*"],
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "provider1",
+      "enabled": true,
+      "email": "provider1@example.com",
+      "emailVerified": true,
+      "firstName": "Provider",
+      "lastName": "One",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "provider123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["provider"],
+      "attributes": {
+        "provider_id": ["provider-uuid-1"]
+      }
+    },
+    {
+      "username": "consumer1",
+      "enabled": true,
+      "email": "consumer1@example.com",
+      "emailVerified": true,
+      "firstName": "Consumer",
+      "lastName": "One",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "consumer123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["consumer"],
+      "attributes": {
+        "provider_id": ["consumer-uuid-1"]
+      }
+    }
+  ]
+}

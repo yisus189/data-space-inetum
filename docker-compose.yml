@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   db:
     image: postgres:15
@@ -6,18 +7,140 @@ services:
       POSTGRES_DB: dataspace
       POSTGRES_USER: dataspace_user
       POSTGRES_PASSWORD: changeme
+    ports:
+      - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dataspace_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1
+    command: ["start-dev", "--http-enabled=true", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: true
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/dev/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2023-05-25T00-00-00Z
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  openmetadata:
+    image: openmetadata/server:1.2.0
+    environment:
+      - OPENMETADATA_CLUSTER_NAME=local
+      - SERVER_HOST=openmetadata
+      - SERVER_PORT=8585
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - DB_DRIVER_CLASS=org.postgresql.Driver
+      - DB_SCHEME=postgresql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=dataspace_user
+      - DB_USER_PASSWORD=changeme
+      - OM_DATABASE=openmetadata_db
+    ports:
+      - "8585:8585"
+    depends_on:
+      db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8585/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   api:
     build: .
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgres://dataspace_user:changeme@db:5432/dataspace
-      OPENMETADATA_URL: ${OPENMETADATA_URL:-}
-      OPENMETADATA_API_KEY: ${OPENMETADATA_API_KEY:-}
+      DATABASE_URL: postgresql://dataspace_user:changeme@db:5432/dataspace
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: myrealm
+      KEYCLOAK_CLIENT_ID: dataspace-ui
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: dataspace
+      MINIO_SECURE: "false"
+      OPENMETADATA_URL: http://openmetadata:8585
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "true"
+      LOG_LEVEL: INFO
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./storage:/app/storage
+
 volumes:
   db-data:
+  minio-data:
+  redis-data:
+  es-data:
