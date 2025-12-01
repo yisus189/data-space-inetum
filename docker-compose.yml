@@ -139,6 +139,19 @@ services:
       - ./src:/app/src
       - ./storage:/app/storage
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8080
+      NEXT_PUBLIC_KEYCLOAK_REALM: myrealm
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: dataspace-ui
+    depends_on:
+      - api
+      - keycloak
+
 volumes:
   db-data:
   minio-data:
