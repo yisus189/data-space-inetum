@@ -34,7 +34,8 @@ class DatasetVersion(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id"), nullable=False)
     version = Column(Integer, nullable=False, default=1)
-    object_path = Column(String, nullable=False)
+    object_key = Column(String, nullable=False)  # S3/MinIO object key
+    object_path = Column(String)  # Legacy field for backwards compatibility
     size = Column(Integer)
     checksum = Column(String)
     created_at = Column(DateTime, server_default=func.now())
@@ -49,3 +50,32 @@ class AuditLog(Base):
     details = Column(JSONB, default={})
     request_id = Column(String)
     timestamp = Column(DateTime, server_default=func.now())
+
+class Policy(Base):
+    __tablename__ = "policies"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id"), nullable=False)
+    odrl_json = Column(JSONB, nullable=False)  # ODRL policy as JSON
+    created_by = Column(String)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class Contract(Base):
+    __tablename__ = "contracts"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id"), nullable=False)
+    policy_id = Column(UUID(as_uuid=True), ForeignKey("policies.id"), nullable=False)
+    provider_id = Column(UUID(as_uuid=True), ForeignKey("providers.id"), nullable=False)
+    consumer_id = Column(String, nullable=False)  # Consumer user ID
+    odrl_json = Column(JSONB, nullable=False)  # Contract as ODRL JSON
+    state = Column(Enum("draft", "negotiating", "accepted", "rejected", "terminated", name="contract_state"), default="draft")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class ContractAgreement(Base):
+    __tablename__ = "contract_agreements"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contract_id = Column(UUID(as_uuid=True), ForeignKey("contracts.id"), nullable=False)
+    agreement_data = Column(JSONB, nullable=False)
+    signed_at = Column(DateTime, server_default=func.now())
+    expires_at = Column(DateTime)
